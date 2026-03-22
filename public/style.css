@@ -290,3 +290,53 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* Dashboard toggle buttons in sensor table */
+  .pin-col { text-align: center; white-space: nowrap; width: 120px; }
+
+  .toggle-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 2px 7px;
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    margin: 0 2px;
+    transition: all .15s;
+  }
+  .toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .toggle-btn.kpi-btn.active {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 6px rgba(0,212,255,0.3);
+  }
+  .toggle-btn.chart-btn.active {
+    background: rgba(57, 255, 20, 0.12);
+    border-color: var(--accent3);
+    color: var(--accent3);
+    box-shadow: 0 0 6px rgba(57,255,20,0.25);
+  }
+
+  /* Pinned row highlight */
+  tr.pinned-row td {
+    background: rgba(0, 212, 255, 0.04);
+  }
+
+  /* Empty-state hint on dashboard */
+  .empty-hint {
+    padding: 28px 20px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .empty-hint strong { color: var(--accent); }
