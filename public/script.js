@@ -16,8 +16,11 @@ let chartInstances  = {};
 let firstRender     = true;
 
 // Dashboard selection state — ordered arrays so drag order is preserved
-let kpiIds   = [];
-let chartIds = [];
+let kpiIds     = [];
+let chartIds   = [];
+// Custom labels for KPI cards and charts (sensorId -> string)
+let kpiLabels   = {};
+let chartLabels = {};
 
 // SortableJS instances for the dashboard grids
 let sortableKpi   = null;
@@ -30,11 +33,15 @@ async function loadDashboardConfig() {
   try {
     const res  = await fetch(CONFIG_URL);
     const data = await res.json();
-    kpiIds   = data.kpiIds   || [];
-    chartIds = data.chartIds || [];
+    kpiIds     = data.kpiIds     || [];
+    chartIds   = data.chartIds   || [];
+    kpiLabels   = data.kpiLabels   || {};
+    chartLabels = data.chartLabels || {};
   } catch {
-    kpiIds   = [];
-    chartIds = [];
+    kpiIds     = [];
+    chartIds   = [];
+    kpiLabels   = {};
+    chartLabels = {};
   }
 }
 
@@ -42,7 +49,7 @@ async function saveDashboardConfig() {
   await fetch(CONFIG_URL, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ kpiIds, chartIds }),
+    body:    JSON.stringify({ kpiIds, chartIds, kpiLabels, chartLabels }),
   });
 }
 
@@ -219,7 +226,8 @@ function renderKPIs() {
     const disp = dispValue(s.value, s.unit);
     html += `<div class="kpi-card ${cls}" data-kpi="${s.id}">
       <div class="kpi-drag-handle" title="Drag to reorder">⠿</div>
-      <div class="kpi-label">${s.label}</div>
+      <div class="kpi-label editable-label" data-id="${s.id}" data-type="kpi"
+           title="Double-click to rename" ondblclick="editLabel(this)">${kpiLabels[s.id] || s.label}</div>
       <div><span class="kpi-value">${disp}</span><span class="kpi-unit">${s.unit}</span></div>
       ${pct !== null ? `<div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(pct,100).toFixed(1)}%"></div></div>` : ''}
     </div>`;
@@ -261,7 +269,8 @@ function renderCharts() {
     html += `<div class="chart-card" data-chart="${s.id}">
       <div class="chart-title">
         <span class="chart-drag-handle" title="Drag to reorder">⠿</span>
-        <span>${s.label}</span>
+        <span class="chart-label-text editable-label" data-id="${s.id}" data-type="chart"
+              title="Double-click to rename" ondblclick="editLabel(this)">${chartLabels[s.id] || s.label}</span>
         <span class="chart-current" id="chart-cur-${safeId(s.id)}">${last !== null ? last.toFixed(1) : '—'} ${s.unit}</span>
       </div>
       <div class="chart-wrap"><canvas id="chart-cv-${safeId(s.id)}"></canvas></div>
@@ -359,6 +368,49 @@ function refreshPinButtons(id) {
   if (kBtn) kBtn.classList.toggle('active', kpiIds.includes(id));
   if (cBtn) cBtn.classList.toggle('active', chartIds.includes(id));
   row.classList.toggle('pinned-row', kpiIds.includes(id) || chartIds.includes(id));
+}
+
+/* =====================================================================
+   INLINE LABEL EDITING
+   ===================================================================== */
+function editLabel(el) {
+  const id     = el.dataset.id;
+  const type   = el.dataset.type;   // 'kpi' or 'chart'
+  const labels = type === 'kpi' ? kpiLabels : chartLabels;
+  const original = el.textContent.trim();
+
+  const input = document.createElement('input');
+  input.className = 'label-edit-input';
+  input.value     = original;
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const commit = async () => {
+    const val = input.value.trim();
+    if (val && val !== original) {
+      labels[id] = val;
+      await saveDashboardConfig();
+    } else if (!val) {
+      delete labels[id];
+      await saveDashboardConfig();
+    }
+    // Restore the label element
+    const span = document.createElement(el.tagName);
+    span.className    = el.className;
+    span.dataset.id   = id;
+    span.dataset.type = type;
+    span.title        = 'Double-click to rename';
+    span.ondblclick   = () => editLabel(span);
+    span.textContent  = labels[id] || (allSensors.find(s => s.id === id)?.label) || id;
+    input.replaceWith(span);
+  };
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = original; input.blur(); }
+  });
 }
 
 /* =====================================================================

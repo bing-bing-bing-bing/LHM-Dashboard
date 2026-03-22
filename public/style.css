@@ -360,3 +360,29 @@
     text-align: center;
   }
   .empty-hint strong { color: var(--accent); }
+
+  /* Editable labels */
+  .editable-label {
+    cursor: text;
+    border-radius: 2px;
+    transition: background .15s;
+  }
+  .editable-label:hover {
+    background: rgba(0, 212, 255, 0.08);
+    outline: 1px dashed rgba(0, 212, 255, 0.3);
+  }
+
+  /* Inline label edit input */
+  .label-edit-input {
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    padding: 1px 5px;
+    outline: none;
+    width: 100%;
+    box-shadow: 0 0 8px rgba(0,212,255,0.2);
+  }

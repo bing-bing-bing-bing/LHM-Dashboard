@@ -23,11 +23,11 @@ app.get('/api/dashboard-config', (req, res) => {
 
 // POST dashboard config
 app.post('/api/dashboard-config', (req, res) => {
-  const { kpiIds, chartIds } = req.body;
+  const { kpiIds, chartIds, kpiLabels = {}, chartLabels = {} } = req.body;
   if (!Array.isArray(kpiIds) || !Array.isArray(chartIds)) {
     return res.status(400).json({ error: 'Invalid payload' });
   }
-  fs.writeFileSync(CONFIG, JSON.stringify({ kpiIds, chartIds }, null, 2));
+  fs.writeFileSync(CONFIG, JSON.stringify({ kpiIds, chartIds, kpiLabels, chartLabels }, null, 2));
   res.json({ ok: true });
 });
 
