@@ -15,9 +15,13 @@ let rawTree         = null;
 let chartInstances  = {};
 let firstRender     = true;
 
-// Dashboard selection state (populated from server on boot)
-let kpiIds   = new Set();
-let chartIds = new Set();
+// Dashboard selection state — ordered arrays so drag order is preserved
+let kpiIds   = [];
+let chartIds = [];
+
+// SortableJS instances for the dashboard grids
+let sortableKpi   = null;
+let sortableChart = null;
 
 /* =====================================================================
    DASHBOARD CONFIG — SERVER PERSISTENCE
@@ -26,11 +30,11 @@ async function loadDashboardConfig() {
   try {
     const res  = await fetch(CONFIG_URL);
     const data = await res.json();
-    kpiIds   = new Set(data.kpiIds   || []);
-    chartIds = new Set(data.chartIds || []);
+    kpiIds   = data.kpiIds   || [];
+    chartIds = data.chartIds || [];
   } catch {
-    kpiIds   = new Set();
-    chartIds = new Set();
+    kpiIds   = [];
+    chartIds = [];
   }
 }
 
@@ -38,7 +42,7 @@ async function saveDashboardConfig() {
   await fetch(CONFIG_URL, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ kpiIds: [...kpiIds], chartIds: [...chartIds] }),
+    body:    JSON.stringify({ kpiIds, chartIds }),
   });
 }
 
@@ -200,7 +204,7 @@ function renderAll() {
    ===================================================================== */
 function renderKPIs() {
   const container = document.getElementById('kpi-container');
-  const pinned = [...kpiIds].map(id => allSensors.find(s => s.id === id)).filter(Boolean);
+  const pinned = kpiIds.map(id => allSensors.find(s => s.id === id)).filter(Boolean);
 
   if (!pinned.length) {
     container.innerHTML =
@@ -214,6 +218,7 @@ function renderKPIs() {
     const pct  = s.unit === '%' ? s.value : null;
     const disp = dispValue(s.value, s.unit);
     html += `<div class="kpi-card ${cls}" data-kpi="${s.id}">
+      <div class="kpi-drag-handle" title="Drag to reorder">⠿</div>
       <div class="kpi-label">${s.label}</div>
       <div><span class="kpi-value">${disp}</span><span class="kpi-unit">${s.unit}</span></div>
       ${pct !== null ? `<div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(pct,100).toFixed(1)}%"></div></div>` : ''}
@@ -221,6 +226,7 @@ function renderKPIs() {
   });
   html += '</div>';
   container.innerHTML = html;
+  initSortableKpi();
 }
 
 function updateKPIs() {
@@ -240,7 +246,7 @@ function updateKPIs() {
    ===================================================================== */
 function renderCharts() {
   const container = document.getElementById('charts-container');
-  const pinned = [...chartIds].map(id => allSensors.find(s => s.id === id)).filter(Boolean);
+  const pinned = chartIds.map(id => allSensors.find(s => s.id === id)).filter(Boolean);
 
   if (!pinned.length) {
     container.innerHTML =
@@ -252,8 +258,9 @@ function renderCharts() {
   pinned.forEach(s => {
     const h    = sensorHistory[s.id];
     const last = h && h.values.length ? h.values[h.values.length-1].v : s.value;
-    html += `<div class="chart-card">
+    html += `<div class="chart-card" data-chart="${s.id}">
       <div class="chart-title">
+        <span class="chart-drag-handle" title="Drag to reorder">⠿</span>
         <span>${s.label}</span>
         <span class="chart-current" id="chart-cur-${safeId(s.id)}">${last !== null ? last.toFixed(1) : '—'} ${s.unit}</span>
       </div>
@@ -268,6 +275,7 @@ function renderCharts() {
     const pts = h ? h.values : [{ t: Date.now(), v: s.value }];
     buildChart(s.id, pts, colorForUnit(s.unit), s.unit, yMaxForUnit(s.unit));
   });
+  initSortableChart();
 }
 
 function buildChart(id, pts, color, unit, yMax) {
@@ -323,19 +331,20 @@ function updateCharts() {
    TOGGLE HANDLERS (called from sensor table buttons)
    ===================================================================== */
 async function toggleKpi(id) {
-  if (kpiIds.has(id)) kpiIds.delete(id); else kpiIds.add(id);
+  const idx = kpiIds.indexOf(id);
+  if (idx >= 0) kpiIds.splice(idx, 1); else kpiIds.push(id);
   await saveDashboardConfig();
   refreshPinButtons(id);
-  // Immediately re-render the dashboard section
   renderKPIs();
 }
 
 async function toggleChart(id) {
-  if (chartIds.has(id)) {
-    chartIds.delete(id);
+  const idx = chartIds.indexOf(id);
+  if (idx >= 0) {
+    chartIds.splice(idx, 1);
     if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
   } else {
-    chartIds.add(id);
+    chartIds.push(id);
   }
   await saveDashboardConfig();
   refreshPinButtons(id);
@@ -347,9 +356,44 @@ function refreshPinButtons(id) {
   if (!row) return;
   const kBtn = row.querySelector('.toggle-btn.kpi-btn');
   const cBtn = row.querySelector('.toggle-btn.chart-btn');
-  if (kBtn) kBtn.classList.toggle('active', kpiIds.has(id));
-  if (cBtn) cBtn.classList.toggle('active', chartIds.has(id));
-  row.classList.toggle('pinned-row', kpiIds.has(id) || chartIds.has(id));
+  if (kBtn) kBtn.classList.toggle('active', kpiIds.includes(id));
+  if (cBtn) cBtn.classList.toggle('active', chartIds.includes(id));
+  row.classList.toggle('pinned-row', kpiIds.includes(id) || chartIds.includes(id));
+}
+
+/* =====================================================================
+   SORTABLE DRAG-AND-DROP
+   ===================================================================== */
+function initSortableKpi() {
+  if (sortableKpi) { sortableKpi.destroy(); sortableKpi = null; }
+  const grid = document.querySelector('.kpi-grid');
+  if (!grid || !window.Sortable) return;
+  sortableKpi = new Sortable(grid, {
+    animation: 200,
+    handle: '.kpi-drag-handle',
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    onEnd: () => {
+      kpiIds = [...document.querySelectorAll('.kpi-card[data-kpi]')].map(c => c.dataset.kpi);
+      saveDashboardConfig();
+    }
+  });
+}
+
+function initSortableChart() {
+  if (sortableChart) { sortableChart.destroy(); sortableChart = null; }
+  const grid = document.querySelector('.charts-grid');
+  if (!grid || !window.Sortable) return;
+  sortableChart = new Sortable(grid, {
+    animation: 200,
+    handle: '.chart-drag-handle',
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    onEnd: () => {
+      chartIds = [...document.querySelectorAll('.chart-card[data-chart]')].map(c => c.dataset.chart);
+      saveDashboardConfig();
+    }
+  });
 }
 
 /* =====================================================================
@@ -392,9 +436,9 @@ function renderSensorTable() {
       const maxD     = s.max!==null ? s.max.toFixed(1) : '—';
       const bar      = pct!==null ? `<span class="mini-bar"><span class="mini-bar-fill ${cls}" style="width:${Math.min(pct,100).toFixed(1)}%"></span></span>` : '';
       const pathStr  = s.path.slice(1,-1).join(' › ');
-      const kpiAct   = kpiIds.has(s.id)   ? 'active' : '';
-      const chartAct = chartIds.has(s.id) ? 'active' : '';
-      const pinned   = (kpiIds.has(s.id) || chartIds.has(s.id)) ? 'pinned-row' : '';
+      const kpiAct   = kpiIds.includes(s.id)   ? 'active' : '';
+      const chartAct = chartIds.includes(s.id) ? 'active' : '';
+      const pinned   = (kpiIds.includes(s.id) || chartIds.includes(s.id)) ? 'pinned-row' : '';
       const escapedId = s.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
       html += `<tr data-sid="${s.id}" class="${pinned}">

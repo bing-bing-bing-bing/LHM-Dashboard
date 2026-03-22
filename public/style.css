@@ -200,6 +200,15 @@
   .kpi-card.danger .kpi-bar-fill { background: var(--danger); }
   .kpi-card.ok     .kpi-bar-fill { background: var(--ok); }
 
+  /* KPI drag handle */
+  .kpi-drag-handle {
+    position: absolute; top: 8px; right: 8px;
+    color: var(--border); font-size: 14px; cursor: grab; line-height: 1;
+    transition: color .15s;
+  }
+  .kpi-card:hover .kpi-drag-handle { color: var(--muted); }
+  .kpi-drag-handle:active { cursor: grabbing; }
+
   /* Specific KPI overrides */
   .kpi-card.danger[data-kpi="disk-spare"]::before { background: var(--ok); }
   .kpi-card.danger[data-kpi="disk-spare"] .kpi-value { color: var(--ok); }
@@ -228,10 +237,21 @@
   .chart-title {
     font-family: var(--font-mono); font-size: 11px; color: var(--muted);
     letter-spacing: 2px; margin-bottom: 12px;
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; align-items: center; gap: 8px;
   }
-  .chart-current { font-size: 14px; color: var(--accent); }
+  .chart-drag-handle {
+    color: var(--border); font-size: 14px; cursor: grab; flex-shrink: 0;
+    transition: color .15s;
+  }
+  .chart-card:hover .chart-drag-handle { color: var(--muted); }
+  .chart-drag-handle:active { cursor: grabbing; }
+  .chart-title > span:nth-child(2) { flex: 1; } /* label stretches */
+  .chart-current { font-size: 14px; color: var(--accent); flex-shrink: 0; }
   .chart-wrap { position: relative; height: 120px; }
+
+  /* Sortable drag states */
+  .sortable-ghost { opacity: 0.25; }
+  .sortable-chosen { box-shadow: 0 0 0 1px var(--accent), var(--glow) !important; }
 
   /* Sensor table */
   .sensor-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 4px; }
