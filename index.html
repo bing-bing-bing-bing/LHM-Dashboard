@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LEVIATHAN — System Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="4" width="12" height="8" rx="1" stroke="#00d4ff" stroke-width="1.2" />
+          <circle cx="8" cy="8" r="1.8" fill="#00d4ff" />
+          <path d="M5 8h1.2M9.8 8H11" stroke="#00d4ff" stroke-width="1.2" stroke-linecap="round" />
+        </svg>
+      </div>
+      <div>
+        <div class="logo-name">LEVIATHAN</div>
+        <div class="logo-sub">SYSTEM MONITOR // LIBRE HW</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-pill">
+        <div class="dot" id="status-dot"></div>
+        <span id="status-text">CONNECTING</span>
+      </div>
+      <span id="last-update">--:--:--</span>
+      <button class="refresh-btn" onclick="fetchData()">⟳ REFRESH</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <aside id="sidebar">
+      <div class="loading">
+        <div class="spinner"></div>LOADING
+      </div>
+    </aside>
+
+    <div class="content">
+      <div class="tab-bar">
+        <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+        <div class="tab" onclick="switchTab('sensors')">All Sensors</div>
+      </div>
+
+      <div class="tab-panel active" id="tab-dashboard">
+        <div id="charts-container"></div>
+        <div id="kpi-container">
+          <div class="loading">
+            <div class="spinner"></div>FETCHING SENSORS
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-sensors">
+        <div id="sensor-table-container">
+          <div class="loading">
+            <div class="spinner"></div>FETCHING SENSORS
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="script.js" defer></script>
+</body>
+
+</html>
